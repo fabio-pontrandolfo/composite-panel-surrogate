@@ -46,6 +46,42 @@ What I took from it:
 ![Extrapolation](results/figures/extrapolation.png)
 ![Learning curve](results/figures/learning_curve.png)
 
+## Evaluation
+
+A random holdout alone would have made these models look ready to use. Each test
+below asks a different question:
+
+| Test | Data | Question it answers |
+|---|---|---|
+| 5-fold cross-validation | 600 training designs | Which model and set-up to pick |
+| Holdout | 200 in-range designs, never used for fitting | How accurate is it in normal use? |
+| Extrapolation | 120 designs with the hole 3–10 mm from the edge (training ≥ 10 mm) | What happens just outside the data? |
+| Error direction | extrapolation set | Are the errors on the safe or unsafe side? |
+| Uncertainty check | GP 95 % intervals on both sets | Does the model know when it doesn't know? |
+| Label-noise floor | mesh convergence study | How small an error is still meaningful? |
+
+Failure strain, hybrid GP (all numbers in `results/ml_results.json`):
+
+| | Holdout | Extrapolation |
+|---|---|---|
+| Mean error | 0.28 % | 2.7 % |
+| Worst error | 2.9 % | 11.5 % |
+| True value inside the GP's 95 % interval | 90 % | 23 % |
+
+Across all models, 88–98 % of extrapolation predictions *over*-estimate the failure
+strain, which is the unsafe direction for a sizing tool. The pure GP's intervals do
+no better (92 % in range, 18 % outside).
+
+**What this means in practice:** a model that is 0.3 % accurate on a random holdout
+can be 10 % wrong, in the unsafe direction, one step outside its training data,
+and its own uncertainty will not flag it. Before trusting a surrogate like this I
+would want:
+
+1. a check that every new design lies inside the training range, and
+2. a test set built deliberately at the edges of that range, not only a random split.
+
+Neither is implemented yet; both are on the list below.
+
 ## How it works
 
 ```
@@ -102,6 +138,7 @@ layup + hole ──► laminate theory (A matrix) ──► graded T6 mesh ─�
 
 - [ ] Fibre-failure target (e.g. max fibre strain in the 0° plies) alongside Tsai–Wu
 - [ ] Better physics feature for failure: Lekhnitskii's full stress field evaluated at 1 mm
+- [ ] Flag designs outside the training range before predicting (simple domain check)
 - [ ] Add the near-edge region to training, then re-test extrapolation on a new boundary
 - [ ] Compression and shear load cases
 - [ ] Phase 2: buckling (plate bending + geometric stiffness, eigenvalue solve)
